@@ -5,12 +5,22 @@ from datasets import load_dataset
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, Trainer
 
-from train.terminology_dict import terminology_dict
-from utils.constant import BASE_MODEL_NAME_OR_PATH, DEVICE, TRAIN_DATA_SET_PATH, TRAINED_LORA_WEIGHTS_MODEL_DIR
+from train.terminology import terminology_dict
+from utils.conf import file_empty_to_exception, torch_gc, gc_collect
+from utils.constant import BASE_MODEL_NAME_OR_PATH, DEVICE, TRAIN_DATA_SET_PATH, TRAINED_LORA_WEIGHTS_MODEL_DIR, \
+    TRAINING_ARGS_PER_DEVICE_TRAIN_BATCH_SIZE, TRAINING_ARGS_GRADIENT_ACCUMULATION_STEPS, LORA_CONFIG_R, \
+    LORA_CONFIG_LORA_ALPHA, TORCH_DTYPE, LORA_CONFIG_TASK_TYPE, IS_HIGH_PERF, TRAIN_MODEL_LOAD_IN_8BIT
+from utils.exception import FileEmptyError
 
-train_tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_NAME_OR_PATH)
-train_model = AutoModelForCausalLM.from_pretrained(BASE_MODEL_NAME_OR_PATH)
-
+device_map = {"": DEVICE}
+train_tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_NAME_OR_PATH, use_fast=True)
+train_model = AutoModelForCausalLM.from_pretrained(
+    BASE_MODEL_NAME_OR_PATH,
+    torch_dtype=eval(TORCH_DTYPE),  # 使用FP16精度
+    low_cpu_mem_usage=True,     # 显示启用低内存加载模式
+    device_map=device_map if IS_HIGH_PERF else {"": "cpu"},  # device_map 字典来指定模型加载时各个模块的设备映射
+    # load_in_8bit=TRAIN_MODEL_LOAD_IN_8BIT,  # 使用 8 比特加载
+)
 
 # ---------- 数据处理 ----------
 class TestCaseDataProcessor:
@@ -71,12 +81,12 @@ class TestCaseDataProcessor:
 def setup_lora(model):
     """配置LoRA参数"""
     config = LoraConfig(
-        r=8,  # LoRA秩
-        lora_alpha=32,  # 缩放系数
+        r=LORA_CONFIG_R,  # LoRA秩
+        lora_alpha=LORA_CONFIG_LORA_ALPHA,  # 缩放系数
         target_modules=["q_proj", "v_proj"],  # 目标模块
         lora_dropout=0.05,
         bias="none",
-        task_type="CAUSAL_LM"
+        task_type=LORA_CONFIG_TASK_TYPE,
     )
     model = prepare_model_for_kbit_training(model)
     return get_peft_model(model, config)
@@ -104,18 +114,26 @@ def augment_data_with_synonyms(data, terminology_dict):
 def train():
     # 初始化基座模型
     try:
+        # 将模型移动到指定设备
         train_model.to(DEVICE)
+
+        torch_gc(DEVICE)
 
         # 准备训练数据
         with open(TRAIN_DATA_SET_PATH) as f:
-            raw_data = json.load(f)
+            content = file_empty_to_exception(f, "待训练数据为空")
+            raw_data = json.loads(content)
         processor = TestCaseDataProcessor(train_tokenizer, terminology_dict)
 
         # 数据增强
         augmented_data = augment_data_with_synonyms(raw_data, terminology_dict)
 
         processed_data = processor.process_data(augmented_data)
-        dataset = load_dataset('json', data_files=TRAIN_DATA_SET_PATH)['train']
+        dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH), streaming=True)['train']    # streaming 使用流式加载
+
+        # 释放不再使用的变量
+        del raw_data, augmented_data
+        gc_collect()
 
         # 配置LoRA
         model = setup_lora(train_model)
@@ -125,30 +143,36 @@ def train():
         training_args = TrainingArguments(
             output_dir=TRAINED_LORA_WEIGHTS_MODEL_DIR,
             num_train_epochs=3,
-            per_device_train_batch_size=2,  # 根据显存调整
-            gradient_accumulation_steps=4,
+            per_device_train_batch_size=TRAINING_ARGS_PER_DEVICE_TRAIN_BATCH_SIZE,  # 根据显存调整
+            gradient_accumulation_steps=TRAINING_ARGS_GRADIENT_ACCUMULATION_STEPS,
             learning_rate=2e-5,
-            fp16=True,
+            fp16=False,
             logging_steps=10,
-            save_strategy="epoch"
+            save_strategy="epoch",
+            remove_unused_columns=False,  # 当该参数为 True 时，Trainer 会移除数据集中模型前向传播方法不需要的列。设置为 False 可以避免移除这些列
         )
 
         # 定义 data_collator 函数
-        def data_collator(data):
-            input_ids = []
-            attention_mask = []
-            labels = []
-            for sample in data:
-                # 这里假设 processed_data 是一个列表，每个元素对应一个样本的处理结果
-                index = dataset.index(sample)  # 获取当前样本在数据集中的索引
-                input_ids.append(processed_data[index]['input_ids'])
-                attention_mask.append(processed_data[index]['attention_mask'])
-                labels.append(processed_data[index]['input_ids'])
-            # 将列表转换为张量
-            input_ids = torch.tensor(input_ids)
-            attention_mask = torch.tensor(attention_mask)
-            labels = torch.tensor(labels)
-            return {'input_ids': input_ids, 'attention_mask': attention_mask, 'labels': labels}
+        def data_collator(features):
+            return {
+                "input_ids": torch.stack([torch.tensor(f1["input_ids"]) for f1 in features]),
+                "attention_mask": torch.stack([torch.tensor(f1["attention_mask"]) for f1 in features]),
+                "labels": torch.stack([torch.tensor(f1["input_ids"]) for f1 in features])
+            }
+            # input_ids = []
+            # attention_mask = []
+            # labels = []
+            # for sample in data:
+            #     # 这里假设 processed_data 是一个列表，每个元素对应一个样本的处理结果
+            #     index = dataset.index(sample)  # 获取当前样本在数据集中的索引
+            #     input_ids.append(processed_data[index]['input_ids'])
+            #     attention_mask.append(processed_data[index]['attention_mask'])
+            #     labels.append(processed_data[index]['input_ids'])
+            # # 将列表转换为张量
+            # input_ids = torch.tensor(input_ids)
+            # attention_mask = torch.tensor(attention_mask)
+            # labels = torch.tensor(labels)
+            # return {'input_ids': input_ids, 'attention_mask': attention_mask, 'labels': labels}
 
         # 开始训练
         trainer = Trainer(
@@ -159,6 +183,15 @@ def train():
         )
         trainer.train()
         model.save_pretrained(TRAINED_LORA_WEIGHTS_MODEL_DIR)
+        print("训练完成，LoRA 权重已保存。")
         return {"message": "训练完成，LoRA 权重已保存。", "status": 200}
-    except Exception as e:
-        return {"message": f"训练过程中出现错误: {e}", "status": 500}
+    except FileEmptyError as e:
+        print(e)
+        return {"message": e, "status": 500}
+    # except Exception as e:
+    #     print(e)
+    #     return {"message": f"训练过程中出现错误: {e}", "status": 500}
+
+
+if __name__ == "__main__":
+    train()

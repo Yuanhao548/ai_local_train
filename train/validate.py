@@ -3,7 +3,7 @@ import json
 from peft import PeftModel
 from transformers import AutoTokenizer, AutoModelForCausalLM
 
-from train.terminology_dict import terminology_dict
+from train.terminology import terminology_dict
 from utils.constant import VALID_DATA_SET_PATH, DEVICE, TRAINED_LORA_WEIGHTS_MODEL_DIR
 
 

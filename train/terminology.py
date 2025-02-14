@@ -1,6 +1,9 @@
 # 在工程初始化时加载术语词典，并将其存储为内存中的字典或列表，方便快速查询。
 import json
 
+from utils.conf import file_empty_to_exception
+from utils.constant import TERMINOLOGY_DICTIONARY_PATH
+
 
 class TerminologyDictionary:
     """
@@ -31,7 +34,8 @@ class TerminologyDictionary:
 
     def __init__(self, dictionary_path):
         with open(dictionary_path, "r", encoding="utf-8") as f:
-            self.terms = json.load(f)["terms"]
+            content = file_empty_to_exception(f, "专业词典不能为空")
+        self.terms = json.loads(content)["terms"]
 
     def get_definition(self, term):
         """获取术语的定义"""
@@ -53,4 +57,4 @@ class TerminologyDictionary:
 
 
 # 加载术语词典
-terminology_dict = TerminologyDictionary("terminology_dictionary.json")
+terminology_dict = TerminologyDictionary(TERMINOLOGY_DICTIONARY_PATH)
