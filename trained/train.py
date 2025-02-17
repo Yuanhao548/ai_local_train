@@ -129,8 +129,8 @@ def train():
         augmented_data = augment_data_with_synonyms(raw_data, terminology_dict)
 
         processed_data = processor.process_data(augmented_data)
-        # dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH), streaming=True)['trained']    # streaming 使用流式加载
-        dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH))['trained']
+        # dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH), streaming=True)    # streaming 使用流式加载
+        dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH))['train']
 
 
         # 释放不再使用的变量
@@ -165,24 +165,26 @@ def train():
 
         # 定义 data_collator 函数
         def data_collator(data):
-            # return {
-            #     "input_ids": torch.stack([torch.tensor(f1["input_ids"]) for f1 in features]),
-            #     "attention_mask": torch.stack([torch.tensor(f1["attention_mask"]) for f1 in features]),
-            #     "labels": torch.stack([torch.tensor(f1["input_ids"]) for f1 in features])
-            # }
             input_ids = []
             attention_mask = []
             labels = []
             for sample in data:
-                # 这里假设 processed_data 是一个列表，每个元素对应一个样本的处理结果
-                index = dataset.index(sample)  # 获取当前样本在数据集中的索引
-                input_ids.append(processed_data[index]['input_ids'])
-                attention_mask.append(processed_data[index]['attention_mask'])
-                labels.append(processed_data[index]['input_ids'])
+                # 直接处理 sample，假设 sample 已经是处理好的格式
+                formatted_sample = processor.format_prompt(sample)
+                tokenized_sample = processor.tokenizer(
+                    formatted_sample,
+                    max_length=processor.max_length,
+                    padding="max_length",
+                    truncation=True,
+                    return_tensors="pt"
+                )
+                input_ids.append(tokenized_sample['input_ids'])
+                attention_mask.append(tokenized_sample['attention_mask'])
+                labels.append(tokenized_sample['input_ids'])
             # 将列表转换为张量
-            input_ids = torch.tensor(input_ids)
-            attention_mask = torch.tensor(attention_mask)
-            labels = torch.tensor(labels)
+            input_ids = torch.cat(input_ids, dim=0)
+            attention_mask = torch.cat(attention_mask, dim=0)
+            labels = torch.cat(labels, dim=0)
             return {'input_ids': input_ids, 'attention_mask': attention_mask, 'labels': labels}
 
         # 开始训练

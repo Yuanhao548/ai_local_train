@@ -7,7 +7,7 @@ from utils.snapshot_download import model_snapshot_download
 from trained.train import train
 
 # 创建FastAPI应用
-app = FastAPI()
+# app = FastAPI()
 # 挂载路由
 # app.include_router(router)
 
