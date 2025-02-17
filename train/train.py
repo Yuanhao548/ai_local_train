@@ -129,7 +129,9 @@ def train():
         augmented_data = augment_data_with_synonyms(raw_data, terminology_dict)
 
         processed_data = processor.process_data(augmented_data)
-        dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH), streaming=True)['train']    # streaming 使用流式加载
+        # dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH), streaming=True)['train']    # streaming 使用流式加载
+        dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH))['train']
+
 
         # 释放不再使用的变量
         del raw_data, augmented_data
@@ -138,6 +140,14 @@ def train():
         # 配置LoRA
         model = setup_lora(train_model)
         model.print_trainable_parameters()  # 显示可训练参数
+
+        # 计算 max_steps
+        dataset_size = len(dataset)
+        per_device_train_batch_size = TRAINING_ARGS_PER_DEVICE_TRAIN_BATCH_SIZE
+        gradient_accumulation_steps = TRAINING_ARGS_GRADIENT_ACCUMULATION_STEPS
+        num_train_epochs = 3
+
+        max_steps = (dataset_size // (per_device_train_batch_size * gradient_accumulation_steps)) * num_train_epochs
 
         # 训练参数设置
         training_args = TrainingArguments(
@@ -150,29 +160,30 @@ def train():
             logging_steps=10,
             save_strategy="epoch",
             remove_unused_columns=False,  # 当该参数为 True 时，Trainer 会移除数据集中模型前向传播方法不需要的列。设置为 False 可以避免移除这些列
+            max_steps=max_steps,
         )
 
         # 定义 data_collator 函数
-        def data_collator(features):
-            return {
-                "input_ids": torch.stack([torch.tensor(f1["input_ids"]) for f1 in features]),
-                "attention_mask": torch.stack([torch.tensor(f1["attention_mask"]) for f1 in features]),
-                "labels": torch.stack([torch.tensor(f1["input_ids"]) for f1 in features])
-            }
-            # input_ids = []
-            # attention_mask = []
-            # labels = []
-            # for sample in data:
-            #     # 这里假设 processed_data 是一个列表，每个元素对应一个样本的处理结果
-            #     index = dataset.index(sample)  # 获取当前样本在数据集中的索引
-            #     input_ids.append(processed_data[index]['input_ids'])
-            #     attention_mask.append(processed_data[index]['attention_mask'])
-            #     labels.append(processed_data[index]['input_ids'])
-            # # 将列表转换为张量
-            # input_ids = torch.tensor(input_ids)
-            # attention_mask = torch.tensor(attention_mask)
-            # labels = torch.tensor(labels)
-            # return {'input_ids': input_ids, 'attention_mask': attention_mask, 'labels': labels}
+        def data_collator(data):
+            # return {
+            #     "input_ids": torch.stack([torch.tensor(f1["input_ids"]) for f1 in features]),
+            #     "attention_mask": torch.stack([torch.tensor(f1["attention_mask"]) for f1 in features]),
+            #     "labels": torch.stack([torch.tensor(f1["input_ids"]) for f1 in features])
+            # }
+            input_ids = []
+            attention_mask = []
+            labels = []
+            for sample in data:
+                # 这里假设 processed_data 是一个列表，每个元素对应一个样本的处理结果
+                index = dataset.index(sample)  # 获取当前样本在数据集中的索引
+                input_ids.append(processed_data[index]['input_ids'])
+                attention_mask.append(processed_data[index]['attention_mask'])
+                labels.append(processed_data[index]['input_ids'])
+            # 将列表转换为张量
+            input_ids = torch.tensor(input_ids)
+            attention_mask = torch.tensor(attention_mask)
+            labels = torch.tensor(labels)
+            return {'input_ids': input_ids, 'attention_mask': attention_mask, 'labels': labels}
 
         # 开始训练
         trainer = Trainer(
