@@ -4,7 +4,7 @@ import uvicorn
 
 # from api.api import router
 from utils.snapshot_download import model_snapshot_download
-from train.train import train
+from trained.train import train
 
 # 创建FastAPI应用
 app = FastAPI()

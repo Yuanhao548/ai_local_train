@@ -56,7 +56,7 @@ class TestCaseTrain:
         trainer = Trainer(
             model=model,
             args=training_args,
-            train_dataset=load_dataset("json", data_files="processed_data.jsonl")["train"],
+            train_dataset=load_dataset("json", data_files="processed_data.jsonl")["trained"],
             eval_dataset=load_dataset("json", data_files="val_data.jsonl")["validation"]
         )
         trainer.train()
@@ -75,6 +75,6 @@ class TestCaseTrain:
         trainer = Trainer(
             model=model,
             args=training_args,
-            train_dataset=load_dataset("json", data_files="test_case_data.jsonl")["train"]
+            train_dataset=load_dataset("json", data_files="test_case_data.jsonl")["trained"]
         )
         trainer.train()

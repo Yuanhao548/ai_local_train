@@ -5,7 +5,7 @@ from datasets import load_dataset
 from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 from transformers import AutoTokenizer, AutoModelForCausalLM, TrainingArguments, Trainer
 
-from train.terminology import terminology_dict
+from trained.terminology import terminology_dict
 from utils.conf import file_empty_to_exception, torch_gc, gc_collect
 from utils.constant import BASE_MODEL_NAME_OR_PATH, DEVICE, TRAIN_DATA_SET_PATH, TRAINED_LORA_WEIGHTS_MODEL_DIR, \
     TRAINING_ARGS_PER_DEVICE_TRAIN_BATCH_SIZE, TRAINING_ARGS_GRADIENT_ACCUMULATION_STEPS, LORA_CONFIG_R, \
@@ -129,8 +129,8 @@ def train():
         augmented_data = augment_data_with_synonyms(raw_data, terminology_dict)
 
         processed_data = processor.process_data(augmented_data)
-        # dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH), streaming=True)['train']    # streaming 使用流式加载
-        dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH))['train']
+        # dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH), streaming=True)['trained']    # streaming 使用流式加载
+        dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH))['trained']
 
 
         # 释放不再使用的变量
