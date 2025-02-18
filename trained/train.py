@@ -201,9 +201,9 @@ def train():
     except FileEmptyError as e:
         print(e)
         return {"message": e, "status": 500}
-    # except Exception as e:
-    #     print(e)
-    #     return {"message": f"训练过程中出现错误: {e}", "status": 500}
+    except Exception as e:
+        print(e)
+        return {"message": f"训练过程中出现错误: {e}", "status": 500}
 
 
 if __name__ == "__main__":

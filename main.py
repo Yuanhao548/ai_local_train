@@ -16,7 +16,7 @@ from trained.train import train
 # 主函数入口
 if __name__ == "__main__":
     # 下载模型
-    # model_snapshot_download()
+    model_snapshot_download()
     # 启动FastAPI应用
     # 用6006端口可以将autodl的端口映射到本地，从而在本地使用api
     # uvicorn.run(

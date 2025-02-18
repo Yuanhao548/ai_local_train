@@ -23,7 +23,7 @@ TRAINED_LORA_WEIGHTS_MODEL_DIR = Path(os.path.join(root_path, "Lora_Weights_Mode
 
 
 # 调整模型的性能参数
-IS_HIGH_PERF = 1
+IS_HIGH_PERF = 0
 
 # training_args
 TRAINING_ARGS_PER_DEVICE_TRAIN_BATCH_SIZE = 1 if not IS_HIGH_PERF else 4

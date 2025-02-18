@@ -1,9 +1,10 @@
 import json
 
 from peft import PeftModel
-from transformers import AutoTokenizer, AutoModelForCausalLM
 
 from trained.terminology import terminology_dict
+from trained.train import train_tokenizer, train_model
+from utils.conf import cached_tokenize, generate_ai_response
 from utils.constant import VALID_DATA_SET_PATH, DEVICE, TRAINED_LORA_WEIGHTS_MODEL_DIR
 
 
@@ -11,12 +12,12 @@ from utils.constant import VALID_DATA_SET_PATH, DEVICE, TRAINED_LORA_WEIGHTS_MOD
 class TestCaseValidator:
     """测试用例验证器"""
 
-    def __init__(self, model_path, terminology_dict):
-        self.tokenizer = AutoTokenizer.from_pretrained(model_path)
-        self.model = AutoModelForCausalLM.from_pretrained(model_path)
-        self.model = PeftModel.from_pretrained(self.model, model_path)
+    def __init__(self, base_model_tokenizer, base_model, lora_model_path, terminology):
+        self.tokenizer = base_model_tokenizer
+        self.model = PeftModel.from_pretrained(base_model, lora_model_path)     # 将lora权重模型加进基础模型
         self.model.to(DEVICE)
-        self.terminology_dict = terminology_dict
+        self.terminology_dict = terminology
+        self.tokenizer_pad_token_id = self.get_pad_token_id()
 
     def postprocess_output(self, text):
         """对生成的文本进行术语标准化"""
@@ -31,43 +32,48 @@ class TestCaseValidator:
 需求：{requirement}
 测试点分析："""
 
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(DEVICE)
-        outputs = self.model.generate(
-            inputs.input_ids,
-            max_new_tokens=150,  # 控制生成长度
-            temperature=0.7,
-            do_sample=True
-        )
-        raw_output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        inputs = cached_tokenize(self.tokenizer, prompt, DEVICE)
+        raw_output = generate_ai_response(inputs, self.model, self.tokenizer_pad_token_id, self.tokenizer)
+        print("生成的测试点是：", raw_output)
 
         # 提取测试点部分
         test_points = raw_output.split("生成的测试用例：")[0].strip()
         return self.postprocess_output(test_points)
 
-    def generate_testcase(self, requirement):
+    def get_pad_token_id(self):
+        # 检查并设置pad_token
+        if self.tokenizer.pad_token is None:
+            self.tokenizer.pad_token = self.tokenizer.eos_token  # 使用eos_token作为pad_token
+
+        # 确认pad_token_id
+        pad_token_id = self.tokenizer.pad_token_id
+        return pad_token_id
+
+    def get_input_text(self, messages):
+        input_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        return input_text
+
+    def generate_testcase(self, messages):
         """生成测试用例，并进行术语标准化"""
+        requirement = self.get_input_text(messages)
+
         # 先生成测试点
         test_points = self.generate_test_points(requirement)
 
         prompt = f"""根据以下需求生成测试用例：
 需求：{requirement}
-测试点分析：{test_points}
+测试点：{test_points}
 测试点分析："""
 
-        inputs = self.tokenizer(prompt, return_tensors="pt").to(DEVICE)
-        outputs = self.model.generate(
-            inputs.input_ids,
-            max_new_tokens=300,
-            temperature=0.7,
-            do_sample=True
-        )
-        raw_output = self.tokenizer.decode(outputs[0], skip_special_tokens=True)
+        inputs = cached_tokenize(self.tokenizer, prompt, DEVICE)
+        raw_output = generate_ai_response(inputs, self.model, self.tokenizer_pad_token_id, self.tokenizer)
+        print("生成的测试用例是：", raw_output)
         test_cases = raw_output.split("生成的测试用例：")[1].strip()
         return test_points, self.postprocess_output(test_cases)
 
 
 # 初始化加载了lora权重的模型
-validator = TestCaseValidator(TRAINED_LORA_WEIGHTS_MODEL_DIR, terminology_dict)
+validator = TestCaseValidator(train_tokenizer, train_model, TRAINED_LORA_WEIGHTS_MODEL_DIR, terminology_dict)
 
 
 def load_validation_data(validation_path):
