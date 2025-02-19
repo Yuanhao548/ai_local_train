@@ -1,8 +1,10 @@
 import gc
+import re
 from functools import lru_cache
 
 import torch
 
+from utils.constant import DEVICE
 from utils.exception import FileEmptyError
 
 
@@ -40,7 +42,7 @@ def cached_tokenize(tokenizer, text, device):
     return inputs
 
 
-def generate_ai_response(inputs, model, pad_token_id, tokenizer):
+def generate_ai_response(inputs, model, pad_token_id, tokenizer, device=DEVICE):
     # 生成时传入必要参数
     generated_ids = model.generate(
         inputs["input_ids"],
@@ -62,4 +64,21 @@ def generate_ai_response(inputs, model, pad_token_id, tokenizer):
 
     # 解码生成的 ID
     response = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+    del generated_ids, inputs
+    torch_gc(device)
     return response
+
+
+# 文本分割函数
+def split_resp_think_text(text):
+    pattern = re.compile(r'<think>(.*?)</think>(.*)', re.DOTALL)  # 定义正则表达式模式
+    match = pattern.search(text)  # 匹配 <think>思考过程</think>回答
+
+    if match:  # 如果匹配到思考过程
+        think_content = match.group(1).strip()  # 获取思考过程
+        answer_content = match.group(2).strip()  # 获取回答
+    else:
+        think_content = ""  # 如果没有匹配到思考过程，则设置为空字符串
+        answer_content = text.strip()  # 直接返回回答
+
+    return think_content, answer_content

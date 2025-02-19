@@ -9,6 +9,7 @@ current_file_path = Path(__file__)
 root_path = current_file_path.parent.parent
 
 BASE_MODEL_NAME = 'DeepSeek-R1-Distill-Qwen-1.5B'
+BASE_MODEL_NAME = 'DeepSeek-R1-Distill-Qwen-7B'
 BASE_MODEL_DIR = Path(os.path.join(root_path, BASE_MODEL_NAME))
 
 BASE_MODEL_NAME_OR_PATH = Path(os.path.join(BASE_MODEL_DIR, "deepseek-ai", BASE_MODEL_NAME))
@@ -23,7 +24,7 @@ TRAINED_LORA_WEIGHTS_MODEL_DIR = Path(os.path.join(root_path, "Lora_Weights_Mode
 
 
 # 调整模型的性能参数
-IS_HIGH_PERF = 0
+IS_HIGH_PERF = 1
 
 # training_args
 TRAINING_ARGS_PER_DEVICE_TRAIN_BATCH_SIZE = 1 if not IS_HIGH_PERF else 4

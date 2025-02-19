@@ -1,31 +1,11 @@
 from fastapi import Request, APIRouter
 import datetime
-import re
 
-from utils.operate_model import call_deepseek_model
+from utils.conf import split_resp_think_text
+from utils.operate_model import call_lora_model
 
 # 创建一个 APIRouter 实例
 router = APIRouter()
-
-
-# 设置设备参数
-# DEVICE = "cuda"  # 使用CUDA
-# DEVICE_ID = "0"  # CUDA设备ID，如果未设置则为空
-
-
-# 文本分割函数
-def split_text(text):
-    pattern = re.compile(r'<think>(.*?)</think>(.*)', re.DOTALL)  # 定义正则表达式模式
-    match = pattern.search(text)  # 匹配 <think>思考过程</think>回答
-
-    if match:  # 如果匹配到思考过程
-        think_content = match.group(1).strip()  # 获取思考过程
-        answer_content = match.group(2).strip()  # 获取回答
-    else:
-        think_content = ""  # 如果没有匹配到思考过程，则设置为空字符串
-        answer_content = text.strip()  # 直接返回回答
-
-    return think_content, answer_content
 
 
 # 处理POST请求的端点
@@ -39,10 +19,11 @@ async def create_item(request: Request):
             {"role": "user", "content": prompt}
         ]
 
-        # 调用模型进行对话生成
-        response = call_deepseek_model(messages)
+        # 调lora模型进行对话生成
+        response = call_lora_model(messages)
+        print("response: ", response)
 
-        think_content, answer_content = split_text(response)  # 调用split_text函数，分割思考过程和回答
+        think_content, answer_content = split_resp_think_text(response)  # 调用split_text函数，分割思考过程和回答
         now = datetime.datetime.now()  # 获取当前时间
         time = now.strftime("%Y-%m-%d %H:%M:%S")  # 格式化时间为字符串
         # 构建响应JSON
