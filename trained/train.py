@@ -17,10 +17,11 @@ train_tokenizer = AutoTokenizer.from_pretrained(BASE_MODEL_NAME_OR_PATH, use_fas
 train_model = AutoModelForCausalLM.from_pretrained(
     BASE_MODEL_NAME_OR_PATH,
     torch_dtype=eval(TORCH_DTYPE),  # 使用FP16精度
-    low_cpu_mem_usage=True,     # 显示启用低内存加载模式
+    low_cpu_mem_usage=True,  # 显示启用低内存加载模式
     device_map=device_map if IS_HIGH_PERF else {"": "cpu"},  # device_map 字典来指定模型加载时各个模块的设备映射
     # load_in_8bit=TRAIN_MODEL_LOAD_IN_8BIT,  # 使用 8 比特加载
 )
+
 
 # ---------- 数据处理 ----------
 class TestCaseDataProcessor:
@@ -131,7 +132,6 @@ def train():
         processed_data = processor.process_data(augmented_data)
         # dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH), streaming=True)    # streaming 使用流式加载
         dataset = load_dataset('json', data_files=str(TRAIN_DATA_SET_PATH))['train']
-
 
         # 释放不再使用的变量
         del raw_data, augmented_data
