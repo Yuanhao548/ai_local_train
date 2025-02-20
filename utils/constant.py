@@ -9,9 +9,10 @@ current_file_path = Path(__file__)
 root_path = current_file_path.parent.parent
 
 BASE_MODEL_NAME = 'DeepSeek-R1-Distill-Qwen-1.5B'
-BASE_MODEL_NAME = 'DeepSeek-R1-Distill-Qwen-7B'
+# BASE_MODEL_NAME = 'DeepSeek-R1-Distill-Qwen-7B'
 BASE_MODEL_DIR = Path(os.path.join(root_path, BASE_MODEL_NAME))
 
+CORPUS_DIR_PATH = Path(os.path.join(root_path, "Corpus"))
 BASE_MODEL_NAME_OR_PATH = Path(os.path.join(BASE_MODEL_DIR, "deepseek-ai", BASE_MODEL_NAME))
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 # DEVICE = torch.device("cpu")

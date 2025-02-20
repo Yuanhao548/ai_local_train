@@ -6,6 +6,7 @@ from langchain.vectorstores import Chroma
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from tqdm import tqdm
 import os
+from utils.constant import CORPUS_DIR_PATH, BASE_MODEL_NAME_OR_PATH
 
 # 获取文件路径函数
 def get_files(dir_path):
@@ -42,33 +43,28 @@ def get_text(dir_path):
         docs.extend(loader.load())
     return docs
 
-# 目标文件夹
-tar_dir = [
-    "/root/autodl-tmp/qwen",
-    "/root/autodl-tmp/Qwen",
-]
 
-# 加载目标文件
-docs = []
-for dir_path in tar_dir:
-    docs.extend(get_text(dir_path))
+def generate_vectordb():
+    docs = []
+    for dir_path in CORPUS_DIR_PATH.rglob('*/'):
+        docs.extend(get_text(dir_path))
 
-# 对文本进行分块
-text_splitter = RecursiveCharacterTextSplitter(
-    chunk_size=500, chunk_overlap=150)
-split_docs = text_splitter.split_documents(docs)
+    # 对文本进行分块
+    text_splitter = RecursiveCharacterTextSplitter(
+        chunk_size=500, chunk_overlap=150)
+    split_docs = text_splitter.split_documents(docs)
 
-# 加载开源词向量模型
-embeddings = HuggingFaceEmbeddings(model_name="/root/autodl-tmp/embedding_model")
+    # 加载开源词向量模型
+    embeddings = HuggingFaceEmbeddings(model_name=BASE_MODEL_NAME_OR_PATH)
 
-# 构建向量数据库
-# 定义持久化路径
-persist_directory = 'data_base/vector_db/chroma'
-# 加载数据库
-vectordb = Chroma.from_documents(
-    documents=split_docs,
-    embedding=embeddings,
-    persist_directory=persist_directory  # 允许我们将persist_directory目录保存到磁盘上
-)
-# 将加载的向量数据库持久化到磁盘上
-vectordb.persist()
+    # 构建向量数据库
+    # 定义持久化路径
+    persist_directory = 'data_base/vector_db/chroma'
+    # 加载数据库
+    vectordb = Chroma.from_documents(
+        documents=split_docs,
+        embedding=embeddings,
+        persist_directory=persist_directory  # 允许我们将persist_directory目录保存到磁盘上
+    )
+    # 将加载的向量数据库持久化到磁盘上
+    vectordb.persist()
