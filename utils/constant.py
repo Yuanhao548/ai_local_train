@@ -12,10 +12,13 @@ BASE_MODEL_NAME = 'DeepSeek-R1-Distill-Qwen-1.5B'
 # BASE_MODEL_NAME = 'DeepSeek-R1-Distill-Qwen-7B'
 BASE_MODEL_DIR = Path(os.path.join(root_path, BASE_MODEL_NAME))
 
-CORPUS_DIR_PATH = Path(os.path.join(root_path, "Corpus"))
+CORPUS_DIR_PATH = Path(os.path.join(root_path, "Corpus", "ai_yuliao"))
 BASE_MODEL_NAME_OR_PATH = Path(os.path.join(BASE_MODEL_DIR, "deepseek-ai", BASE_MODEL_NAME))
+SENTENCE_EMBEDDING_MODEL_PATH = Path(os.path.join(BASE_MODEL_DIR, "embedding_model"))
+
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
 # DEVICE = torch.device("cpu")
+DEVICE_MAP = {"": DEVICE}
 
 TRAIN_DATA_SET_PATH = Path(os.path.join(root_path, "static", "train_datas_set.json"))  # 训练数据集路径
 VALID_DATA_SET_PATH = Path(os.path.join(root_path, "static", "validation_datas_set.json"))  # 验证数据集路径

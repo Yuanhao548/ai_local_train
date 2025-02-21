@@ -6,7 +6,8 @@ from langchain.vectorstores import Chroma
 from langchain.embeddings.huggingface import HuggingFaceEmbeddings
 from tqdm import tqdm
 import os
-from utils.constant import CORPUS_DIR_PATH, BASE_MODEL_NAME_OR_PATH
+from utils.constant import CORPUS_DIR_PATH, SENTENCE_EMBEDDING_MODEL_PATH
+
 
 # 获取文件路径函数
 def get_files(dir_path):
@@ -55,7 +56,7 @@ def generate_vectordb():
     split_docs = text_splitter.split_documents(docs)
 
     # 加载开源词向量模型
-    embeddings = HuggingFaceEmbeddings(model_name=BASE_MODEL_NAME_OR_PATH)
+    embeddings = HuggingFaceEmbeddings(model_name=str(SENTENCE_EMBEDDING_MODEL_PATH))
 
     # 构建向量数据库
     # 定义持久化路径

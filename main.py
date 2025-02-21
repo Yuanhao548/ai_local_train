@@ -4,6 +4,7 @@ import uvicorn
 
 from api.api import router
 from trained.construction_knowledge_script import generate_vectordb
+from trained.gr_web import web_demo
 from utils.snapshot_download import model_snapshot_download
 
 # from trained.train import train
@@ -23,4 +24,4 @@ if __name__ == "__main__":
         app, host="127.0.0.1", port=6006, workers=1
     )  # 在指定端口和主机上启动应用
     # train()
-    generate_vectordb()
+    web_demo()

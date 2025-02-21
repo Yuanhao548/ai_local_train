@@ -1,2 +1,2 @@
-a = 'is_high_perf'
+a = 'device_map'
 print(a.upper())

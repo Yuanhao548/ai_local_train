@@ -4,6 +4,8 @@ from langchain.callbacks.manager import CallbackManagerForLLMRun
 from transformers import AutoTokenizer, AutoModelForCausalLM, GenerationConfig
 import torch
 
+from utils.constant import DEVICE_MAP, TORCH_DTYPE
+
 
 class DeepSeek_LLM(LLM):
     # 基于本地 InternLM 自定义 LLM 类
@@ -16,7 +18,9 @@ class DeepSeek_LLM(LLM):
         super().__init__()
         print("正在从本地加载模型...")
         self.tokenizer = AutoTokenizer.from_pretrained(model_path, trust_remote_code=True)
-        self.model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True,torch_dtype=torch.bfloat16,  device_map="auto")
+        self.model = AutoModelForCausalLM.from_pretrained(model_path, trust_remote_code=True,
+                                                          torch_dtype=eval(TORCH_DTYPE),
+                                                          device_map=DEVICE_MAP)
         self.model.generation_config = GenerationConfig.from_pretrained(model_path)
         self.model.generation_config.pad_token_id = self.model.generation_config.eos_token_id
         self.model = self.model.eval()
