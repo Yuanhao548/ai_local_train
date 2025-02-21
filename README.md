@@ -15,5 +15,6 @@ git clone https://github.com/InternLM/xtuner.git
 git clone https://github.com/InternLM/InternLM-XComposer.git
 git clone https://github.com/InternLM/lagent.git
 git clone https://github.com/InternLM/InternLM.git
+git clone https://github.com/QwenLM/Qwen.git
 # 关闭学术资源加速
 unset http_proxy && unset https_proxy

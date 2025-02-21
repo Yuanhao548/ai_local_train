@@ -5,14 +5,13 @@ import uvicorn
 from api.api import router
 from trained.construction_knowledge_script import generate_vectordb
 from utils.snapshot_download import model_snapshot_download
+
 # from trained.train import train
 
 # 创建FastAPI应用
 app = FastAPI()
 # 挂载路由
 app.include_router(router)
-
-
 
 # 主函数入口
 if __name__ == "__main__":
